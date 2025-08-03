@@ -55,7 +55,7 @@ migrate = Migrate(app, db)
 # ----------- Routes -----------
 
 # Projects
-@app.route("/api/projects", methods=["GET"])
+@app.route("/api/Projects", methods=["GET"])
 def get_projects():
     projects = Project.query.all()
     return jsonify([{
@@ -66,7 +66,7 @@ def get_projects():
         "link": p.link
     } for p in projects]), 200
 
-@app.route("/api/projects", methods=["POST"])
+@app.route("/api/Projects", methods=["POST"])
 @require_auth
 def add_project():
     data = request.get_json()
@@ -86,7 +86,7 @@ def add_project():
         "link": new_project.link
     }), 201
 
-@app.route("/api/projects/<int:project_id>", methods=["DELETE"])
+@app.route("/api/Projects/<int:project_id>", methods=["DELETE"])
 @require_auth
 def delete_project(project_id):
     project = Project.query.get(project_id)
@@ -96,7 +96,7 @@ def delete_project(project_id):
     db.session.commit()
     return jsonify({"message": "Project deleted"}), 200
 
-@app.route("/api/projects/<int:project_id>", methods=["PUT"])
+@app.route("/api/Projects/<int:project_id>", methods=["PUT"])
 @require_auth
 def update_project(project_id):
     project = Project.query.get(project_id)
@@ -111,7 +111,7 @@ def update_project(project_id):
     return jsonify({"message": "Project updated"}), 200
 
 # Experience
-@app.route("/api/experience", methods=["GET"])
+@app.route("/api/Experience", methods=["GET"])
 def get_experience():
     experience = Experience.query.all()
     return jsonify([{
@@ -124,7 +124,7 @@ def get_experience():
         "description": e.description
     } for e in experience]), 200
 
-@app.route("/api/experience", methods=["POST"])
+@app.route("/api/Experience", methods=["POST"])
 @require_auth
 def add_experience():
     data = request.get_json()
@@ -148,7 +148,7 @@ def add_experience():
         "description": exp.description
     }), 201
 
-@app.route("/api/experience/<int:exp_id>", methods=["DELETE"])
+@app.route("/api/Experience/<int:exp_id>", methods=["DELETE"])
 @require_auth
 def delete_experience(exp_id):
     exp = Experience.query.get(exp_id)
@@ -158,7 +158,7 @@ def delete_experience(exp_id):
     db.session.commit()
     return jsonify({"message": "Experience deleted"}), 200
 
-@app.route("/api/experience/<int:exp_id>", methods=["PUT"])
+@app.route("/api/Experience/<int:exp_id>", methods=["PUT"])
 @require_auth
 def update_experience(exp_id):
     exp = Experience.query.get(exp_id)
@@ -175,7 +175,7 @@ def update_experience(exp_id):
     return jsonify({"message": "Experience updated"}), 200
 
 # Education
-@app.route("/api/education", methods=["GET"])
+@app.route("/api/Education", methods=["GET"])
 def get_education():
     education = Education.query.all()
     return jsonify([{
@@ -187,7 +187,7 @@ def get_education():
         "description": e.description
     } for e in education]), 200
 
-@app.route("/api/education", methods=["POST"])
+@app.route("/api/Education", methods=["POST"])
 @require_auth
 def add_education():
     data = request.get_json()
@@ -209,7 +209,7 @@ def add_education():
         "description": edu.description
     }), 201
 
-@app.route("/api/education/<int:edu_id>", methods=["DELETE"])
+@app.route("/api/Education/<int:edu_id>", methods=["DELETE"])
 @require_auth
 def delete_education(edu_id):
     edu = Education.query.get(edu_id)
@@ -219,7 +219,7 @@ def delete_education(edu_id):
     db.session.commit()
     return jsonify({"message": "Education deleted"}), 200
 
-@app.route("/api/education/<int:edu_id>", methods=["PUT"])
+@app.route("/api/Education/<int:edu_id>", methods=["PUT"])
 @require_auth
 def update_education(edu_id):
     edu = Education.query.get(edu_id)
@@ -235,7 +235,7 @@ def update_education(edu_id):
     return jsonify({"message": "Education updated"}), 200
 
 # Contact
-@app.route("/api/contact", methods=["POST"])
+@app.route("/api/Contact", methods=["POST"])
 def contact():
     data = request.get_json() if request.is_json else request.form
     name = data.get("name")
