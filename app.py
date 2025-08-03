@@ -47,12 +47,16 @@ def require_auth(func):
         return func(*args, **kwargs)
     return wrapper
 
+#Auth check route
+@app.route('/auth-check', methods=['GET'])
+@require_auth
+def auth_check():
+    return jsonify({"message": "Authenticated"}), 200
+
 # Init extensions
 mail = Mail(app)
 db.init_app(app)
 migrate = Migrate(app, db)
-
-# ----------- Routes -----------
 
 # Projects
 @app.route("/api/Projects", methods=["GET"])
