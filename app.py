@@ -55,7 +55,8 @@ migrate = Migrate(app, db)
 
 # ----------- Routes -----------
 
-@app.route("/projects", methods=["GET"])
+# Projects
+@app.route("/api/projects", methods=["GET"])
 def get_projects():
     projects = Project.query.all()
     return jsonify([{
@@ -66,7 +67,8 @@ def get_projects():
         "link": p.link
     } for p in projects]), 200
 
-@app.route("/projects", methods=["POST"])
+@app.route("/api/projects", methods=["POST"])
+@require_auth
 def add_project():
     data = request.get_json()
     new_project = Project(
@@ -77,9 +79,15 @@ def add_project():
     )
     db.session.add(new_project)
     db.session.commit()
-    return jsonify({"status": "Project added"}), 201
+    return jsonify({
+        "id": new_project.id,
+        "name": new_project.name,
+        "description": new_project.description,
+        "tech": new_project.tech,
+        "link": new_project.link
+    }), 201
 
-@app.route("/projects/<int:project_id>", methods=["DELETE"])
+@app.route("/api/projects/<int:project_id>", methods=["DELETE"])
 @require_auth
 def delete_project(project_id):
     project = Project.query.get(project_id)
@@ -89,7 +97,22 @@ def delete_project(project_id):
     db.session.commit()
     return jsonify({"message": "Project deleted"}), 200
 
-@app.route("/experience", methods=["GET"])
+@app.route("/api/projects/<int:project_id>", methods=["PUT"])
+@require_auth
+def update_project(project_id):
+    project = Project.query.get(project_id)
+    if not project:
+        return jsonify({"error": "Project not found"}), 404
+    data = request.get_json()
+    project.name = data.get("name", project.name)
+    project.description = data.get("description", project.description)
+    project.tech = data.get("tech", project.tech)
+    project.link = data.get("link", project.link)
+    db.session.commit()
+    return jsonify({"message": "Project updated"}), 200
+
+# Experience
+@app.route("/api/experience", methods=["GET"])
 def get_experience():
     experience = Experience.query.all()
     return jsonify([{
@@ -102,7 +125,7 @@ def get_experience():
         "description": e.description
     } for e in experience]), 200
 
-@app.route("/experience", methods=["POST"])
+@app.route("/api/experience", methods=["POST"])
 @require_auth
 def add_experience():
     data = request.get_json()
@@ -116,9 +139,17 @@ def add_experience():
     )
     db.session.add(exp)
     db.session.commit()
-    return jsonify({"id": exp.id}), 201
+    return jsonify({
+        "id": exp.id,
+        "title": exp.title,
+        "company": exp.company,
+        "location": exp.location,
+        "start": exp.start,
+        "end": exp.end,
+        "description": exp.description
+    }), 201
 
-@app.route("/experience/<int:exp_id>", methods=["DELETE"])
+@app.route("/api/experience/<int:exp_id>", methods=["DELETE"])
 @require_auth
 def delete_experience(exp_id):
     exp = Experience.query.get(exp_id)
@@ -128,7 +159,24 @@ def delete_experience(exp_id):
     db.session.commit()
     return jsonify({"message": "Experience deleted"}), 200
 
-@app.route("/education", methods=["GET"])
+@app.route("/api/experience/<int:exp_id>", methods=["PUT"])
+@require_auth
+def update_experience(exp_id):
+    exp = Experience.query.get(exp_id)
+    if not exp:
+        return jsonify({"error": "Experience not found"}), 404
+    data = request.get_json()
+    exp.title = data.get("title", exp.title)
+    exp.company = data.get("company", exp.company)
+    exp.location = data.get("location", exp.location)
+    exp.start = data.get("start", exp.start)
+    exp.end = data.get("end", exp.end)
+    exp.description = data.get("description", exp.description)
+    db.session.commit()
+    return jsonify({"message": "Experience updated"}), 200
+
+# Education
+@app.route("/api/education", methods=["GET"])
 def get_education():
     education = Education.query.all()
     return jsonify([{
@@ -140,7 +188,7 @@ def get_education():
         "description": e.description
     } for e in education]), 200
 
-@app.route("/education", methods=["POST"])
+@app.route("/api/education", methods=["POST"])
 @require_auth
 def add_education():
     data = request.get_json()
@@ -153,9 +201,16 @@ def add_education():
     )
     db.session.add(edu)
     db.session.commit()
-    return jsonify({"id": edu.id}), 201
+    return jsonify({
+        "id": edu.id,
+        "degree": edu.degree,
+        "institution": edu.institution,
+        "start": edu.start,
+        "end": edu.end,
+        "description": edu.description
+    }), 201
 
-@app.route("/education/<int:edu_id>", methods=["DELETE"])
+@app.route("/api/education/<int:edu_id>", methods=["DELETE"])
 @require_auth
 def delete_education(edu_id):
     edu = Education.query.get(edu_id)
@@ -165,7 +220,23 @@ def delete_education(edu_id):
     db.session.commit()
     return jsonify({"message": "Education deleted"}), 200
 
-@app.route("/contact", methods=["POST"])
+@app.route("/api/education/<int:edu_id>", methods=["PUT"])
+@require_auth
+def update_education(edu_id):
+    edu = Education.query.get(edu_id)
+    if not edu:
+        return jsonify({"error": "Education not found"}), 404
+    data = request.get_json()
+    edu.degree = data.get("degree", edu.degree)
+    edu.institution = data.get("institution", edu.institution)
+    edu.start = data.get("start", edu.start)
+    edu.end = data.get("end", edu.end)
+    edu.description = data.get("description", edu.description)
+    db.session.commit()
+    return jsonify({"message": "Education updated"}), 200
+
+# Contact
+@app.route("/api/contact", methods=["POST"])
 def contact():
     data = request.get_json() if request.is_json else request.form
     name = data.get("name")
@@ -181,16 +252,23 @@ def contact():
     mail.send(msg)
     return jsonify({"status": "Message sent"}), 200
 
+# Welcome route
 @app.route("/api/welcome")
 def welcome():
     return {"message": "Welcome to my portfolio!"}
 
+# Catch-all for React frontend
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_react(path):
     if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, "index.html")
+
+# Global 404 handler
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Not found"}), 404
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
