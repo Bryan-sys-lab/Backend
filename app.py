@@ -259,15 +259,20 @@ def contact():
 @app.route("/api/welcome")
 def welcome():
     return {"message": "Welcome to my portfolio!"}
+from flask import send_from_directory
+import os
 
-# ✅ React frontend catch-all
 @app.route("/", defaults={"path": ""})
+@app.route("/<string:path>")
 @app.route("/<path:path>")
 def serve_react(path):
-    logging.info(f"Serving React route: /{path}")
-    if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+    app.logger.info(f"React route requested: /{path}")
+    full_path = os.path.join(app.static_folder, path)
+    if path != "" and os.path.exists(full_path):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, "index.html")
+
+
 
 # 404 fallback for unmatched API routes
 @app.errorhandler(404)
