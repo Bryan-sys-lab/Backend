@@ -1,20 +1,26 @@
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
-from flask_mail import Mail, Message
-from dotenv import load_dotenv
-from functools import wraps
-from werkzeug.security import check_password_hash
-from flask_migrate import Migrate
 import os
 import logging
+from flask import Flask, request, jsonify, send_from_directory, url_for
+from flask_cors import CORS
+from flask_mail import Mail, Message
+from flask_migrate import Migrate
+from werkzeug.security import check_password_hash
+from werkzeug.utils import secure_filename
+from functools import wraps
+from dotenv import load_dotenv
 
 from models import db, Project, Experience, Education
 
 # Load environment variables
 load_dotenv()
 
+# Flask app setup
 app = Flask(__name__, static_folder="static", static_url_path="/")
 CORS(app)
+
+# Upload folder setup
+UPLOAD_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Config
 app.config.update(
@@ -27,12 +33,12 @@ app.config.update(
     MAIL_DEFAULT_SENDER=os.getenv("MAIL_DEFAULT_SENDER"),
     MAIL_USE_TLS=os.getenv("MAIL_USE_TLS") == "True",
     MAIL_USE_SSL=os.getenv("MAIL_USE_SSL") == "True",
+    UPLOAD_FOLDER=UPLOAD_FOLDER
 )
-
 # Logging
 logging.basicConfig(level=logging.INFO)
 
-# Auth
+# Admin auth
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")
 if not ADMIN_USERNAME or not ADMIN_PASSWORD_HASH:
@@ -47,18 +53,17 @@ def require_auth(func):
         return func(*args, **kwargs)
     return wrapper
 
-#Auth check route
 @app.route('/auth-check', methods=['GET'])
 @require_auth
 def auth_check():
     return jsonify({"message": "Authenticated"}), 200
 
-# Init extensions
+# Extensions
 mail = Mail(app)
 db.init_app(app)
 migrate = Migrate(app, db)
 
-# Projects
+# === PROJECTS ===
 @app.route("/api/Projects", methods=["GET"])
 def get_projects():
     projects = Project.query.all()
@@ -67,27 +72,38 @@ def get_projects():
         "name": p.name,
         "description": p.description,
         "tech": p.tech,
-        "link": p.link
+        "link": p.link,
+        "image": url_for('static', filename=f"uploads/{p.image}") if p.image else None
     } for p in projects]), 200
 
 @app.route("/api/Projects", methods=["POST"])
 @require_auth
 def add_project():
-    data = request.get_json()
-    new_project = Project(
-        name=data["name"],
-        description=data["description"],
-        tech=data["tech"],
-        link=data["link"]
-    )
+    name = request.form.get("name")
+    description = request.form.get("description")
+    tech = request.form.getlist("tech[]") or request.form.get("tech")
+    link = request.form.get("link")
+    image = request.files.get("image")
+
+    if isinstance(tech, str):
+        tech = [t.strip() for t in tech.split(",") if t.strip()]
+
+    filename = None
+    if image:
+        filename = secure_filename(image.filename)
+        image.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+
+    new_project = Project(name=name, description=description, tech=tech, link=link, image=filename)
     db.session.add(new_project)
     db.session.commit()
+
     return jsonify({
         "id": new_project.id,
         "name": new_project.name,
         "description": new_project.description,
         "tech": new_project.tech,
-        "link": new_project.link
+        "link": new_project.link,
+        "image": url_for('static', filename=f"uploads/{filename}") if filename else None
     }), 201
 
 @app.route("/api/Projects/<int:project_id>", methods=["DELETE"])
@@ -114,7 +130,7 @@ def update_project(project_id):
     db.session.commit()
     return jsonify({"message": "Project updated"}), 200
 
-# Experience
+# === EXPERIENCE ===
 @app.route("/api/Experience", methods=["GET"])
 def get_experience():
     experience = Experience.query.all()
@@ -131,7 +147,8 @@ def get_experience():
 @app.route("/api/Experience", methods=["POST"])
 @require_auth
 def add_experience():
-    data = request.get_json()
+    data = request.get_json() if request.is_json else request.form
+
     exp = Experience(
         title=data["title"],
         company=data["company"],
@@ -151,6 +168,7 @@ def add_experience():
         "end": exp.end,
         "description": exp.description
     }), 201
+
 
 @app.route("/api/Experience/<int:exp_id>", methods=["DELETE"])
 @require_auth
@@ -178,7 +196,7 @@ def update_experience(exp_id):
     db.session.commit()
     return jsonify({"message": "Experience updated"}), 200
 
-# Education
+# === EDUCATION ===
 @app.route("/api/Education", methods=["GET"])
 def get_education():
     education = Education.query.all()
@@ -194,7 +212,8 @@ def get_education():
 @app.route("/api/Education", methods=["POST"])
 @require_auth
 def add_education():
-    data = request.get_json()
+    data = request.get_json() if request.is_json else request.form
+
     edu = Education(
         degree=data["degree"],
         institution=data["institution"],
@@ -212,6 +231,7 @@ def add_education():
         "end": edu.end,
         "description": edu.description
     }), 201
+
 
 @app.route("/api/Education/<int:edu_id>", methods=["DELETE"])
 @require_auth
@@ -238,7 +258,7 @@ def update_education(edu_id):
     db.session.commit()
     return jsonify({"message": "Education updated"}), 200
 
-# Contact
+# === CONTACT ===
 @app.route("/api/Contact", methods=["POST"])
 def contact():
     data = request.get_json() if request.is_json else request.form
@@ -255,31 +275,28 @@ def contact():
     mail.send(msg)
     return jsonify({"status": "Message sent"}), 200
 
-# Welcome route
+# === WELCOME ===
 @app.route("/api/welcome")
 def welcome():
     return {"message": "Welcome to my portfolio!"}
-from flask import send_from_directory
-import os
 
+# === CATCH-ALL REACT ROUTE ===
 @app.route("/", defaults={"path": ""})
 @app.route("/<string:path>")
 @app.route("/<path:path>")
 def serve_react(path):
-    app.logger.info(f"React route requested: /{path}")
     full_path = os.path.join(app.static_folder, path)
     if path != "" and os.path.exists(full_path):
         return send_from_directory(app.static_folder, path)
     return send_from_directory(app.static_folder, "index.html")
 
-
-
-# 404 fallback for unmatched API routes
+# === 404 ===
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({"error": "Not found"}), 404
 
-# ✅ Dynamic port for deployment
+# === RUN APP ===
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(debug=True, host="0.0.0.0", port=port)
+    logging.info(f"Server running on port {port}")
